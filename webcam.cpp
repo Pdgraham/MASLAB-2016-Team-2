@@ -1,30 +1,22 @@
-#include <iostream>
-
-#include <opencv2/core/core.hpp>
-#include <opencv2/highgui/highgui.hpp>
-#include <opencv2/video/tracking.hpp>
-
-int main() {
-  cv::VideoCapture cap;
-  cap.open(0);
-
-  if( !cap.isOpened() ) {
-    std::cerr << "***Could not initialize capturing...***\n";
-    std::cerr << "Current parameter's value: \n";
-    return -1;
-  }
-
-  cv::Mat frame;
-  while(1) {
-    cap >> frame;
-    if(frame.empty()) {
-      std::cerr<<"frame is empty"<<std::endl;
-      break;
+#include "opencv2/opencv.hpp"
+using namespace cv;
+int main(int argc, char** argv)
+{
+    VideoCapture cap;
+    // open the default camera, use something different from 0 otherwise;
+    // Check VideoCapture documentation.
+    if(!cap.open(0))
+        return 0;
+    for(;;)
+    {
+          Mat frame;
+          cap >> frame;
+          if( frame.empty() ) break; // end of video stream
+          imshow("this is you, smile! :)", frame);
+          if( waitKey(1) == 27 ) break; // stop capturing by pressing ESC 
     }
-
-    cv::imshow("", frame);
-    cv::waitKey(10);
-  }
-
-  return 1;
+    // the camera will be closed automatically upon exit
+    // cap.close();
+    return 0;
 }
+
