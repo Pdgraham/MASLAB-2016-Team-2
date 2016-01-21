@@ -76,15 +76,15 @@ namespace std
 //  12.        Add south node to end of Q if south has not been processed yet.
 //  13. Return.
 
-list<int> FloodFill(int orig_x, int orig_y, cv::Mat image) {
-    list< list<int> > queue;
-    unordered_set< int > processed;
+vector<int> FloodFill(int orig_x, int orig_y, cv::Mat image) {
+    vector< vector<int> > queue;
+    // set< int > processed;
     int topLeftCornerY = 1200; // must be greater than 640x480=1120
     int topLeftCornerX = 1200; // must be greater than 640x480=1120
     int bottomRightCornerY = 0;
     int bottomRightCornerX = 0;
 
-    list<int> coor;
+    vector<int> coor;
     coor.push_back(orig_x);
     coor.push_back(orig_y);
     queue.push_back(coor);
@@ -95,22 +95,17 @@ list<int> FloodFill(int orig_x, int orig_y, cv::Mat image) {
     int height = image.rows;
     Scalar_<uint8_t> bgrPixel;  
 
-    // cout << "orig_x: " << orig_x << "  orig_y : " << orig_y << endl;
-
     while (queue.size() != 0) {
-        list<int> cur_coor = queue.front();
-        queue.pop_front();
-        int x = cur_coor.front();
-        cur_coor.pop_front();
-        int y = cur_coor.front();
-        cur_coor.pop_front();
-        cur_coor.push_back(x);
-        cur_coor.push_back(y);
+        vector<int> cur_coor = queue.back();
+        queue.pop_back();
+        int x = cur_coor.at(0);
+        int y = cur_coor.at(1);
         bgrPixel.val[0] = pixelPtr[x*width*cn + y*cn + 0]; // B
         bgrPixel.val[1] = pixelPtr[x*width*cn + y*cn + 1]; // G
         bgrPixel.val[2] = pixelPtr[x*width*cn + y*cn + 2]; // R
 
-        if (bgrPixel.val[2] > 1.3*bgrPixel.val[1] && bgrPixel.val[2] > 1.3*bgrPixel.val[0]) {
+        bool isRed = bgrPixel.val[2] > 1.3*bgrPixel.val[1] && bgrPixel.val[2] > 1.3*bgrPixel.val[0];
+        if (isRed) {
             if (x + y < topLeftCornerX + topLeftCornerY) {
                 topLeftCornerX = x;
                 topLeftCornerY = y;
@@ -130,7 +125,7 @@ list<int> FloodFill(int orig_x, int orig_y, cv::Mat image) {
                         continue;
                     }
                     if (x+dx < width && x+dx >= 0 && y+dy < height && y+dy >= 0) {
-                        list<int> neighbor_coor;
+                        vector<int> neighbor_coor;
                         neighbor_coor.push_back(x + dx);
                         neighbor_coor.push_back(y + dy);
                         // set<list<int> >::const_iterator got = processed.find(neighbor_coor);
@@ -146,7 +141,7 @@ list<int> FloodFill(int orig_x, int orig_y, cv::Mat image) {
         }
     }
 
-    list<int> output;
+    vector<int> output;
     int minNumLength = 25;
     if (bottomRightCornerX - topLeftCornerX > minNumLength && bottomRightCornerY - topLeftCornerY > minNumLength) {
         output.push_back(topLeftCornerX);
@@ -165,15 +160,10 @@ int main( int argc, char** argv )
     int height = image.rows;
     int width = image.cols;
 
-    uint8_t* pixelPtr = (uint8_t*)image.data;
-    int cn = image.channels();
-    Scalar_<uint8_t> bgrPixel;
-
-    list<int> output;
+    vector<int> output;
     int numBlocks = 0;
-    cout << "FloodFill output: " << endl;
-    for (int x = 0; x < height; x+=25) { // why does switching height and width work?
-        for (int y = 0; y < width; y+=25) {
+    for (int x = 0; x < height; x+=50) { // why does switching height and width work?
+        for (int y = 0; y < width; y+=50) {
             // output = FloodFill(480, 1990, image);
             output = FloodFill(x, y, image);
             // output = FloodFill(482, 0, image);
@@ -186,8 +176,8 @@ int main( int argc, char** argv )
                 // for (list<int> outerList : output) {
                     // cout << "Inside!";
                     // for (int pixelVal : outerList) {
-                    for (int pixelVal : output) {
-                        cout << int(pixelVal) << " ";
+                    // for (int pixelVal : output) {
+                        // cout << int(pixelVal) << " ";
                         // int i = outerList.front();
                         // outerList.pop_front();
                         // int j = outerList.front();
@@ -195,15 +185,16 @@ int main( int argc, char** argv )
                         // pixelPtr[i*image.cols*cn + j*cn + 0] = fillColor[fillIndex];
                         // pixelPtr[i*image.cols*cn + j*cn + 1] = fillColor[fillIndex];
                         // pixelPtr[i*image.cols*cn + j*cn + 2] = fillColor[fillIndex];  
-                    }
+                    // }
                 // } 
-                cout << endl;
+                // cout << endl;
                 if (output.size() !=0) {
+                    cout << "[(" << output.at(0) << "," << output.at(1) << ")  (" << output.at(2) << "," << output.at(3) << ")]    ";
                     numBlocks++;
                 }
         }
     }
-    std::cout << "Flood fill took " << float( clock () - begin_time ) /  CLOCKS_PER_SEC << "s." << endl;
+    cout << endl << "Flood fill took " << float( clock () - begin_time ) /  CLOCKS_PER_SEC << "s." << endl;
     cout << "Number of Flood Fill Areas discovered: " << numBlocks << endl;
 
     namedWindow( "Display window", WINDOW_AUTOSIZE );// Create a window for display.
