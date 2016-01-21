@@ -112,9 +112,16 @@ list<list<int> > FloodFill(int orig_x, int orig_y, cv::Mat image) {
             output.push_back(cur_coor);
             // cout << "Pixel is red";
 
-            for (int dx = -1; dx < 2; dx+=2) {
-                for (int dy = -1; dy < 2; dy+=2) {
-                    if (x+dx < width && x+dx > 0 && y+dy < height && y+dy > 0) {
+            // pixelPtr[x*width*cn + y*cn + 0] = 0; // fillColor;
+            // pixelPtr[x*width*cn + y*cn + 1] = 0; //fillColor;
+            // pixelPtr[x*width*cn + y*cn + 2] = 0; //fillColor;
+
+            for (int dx = -1; dx < 2; dx++) {
+                for (int dy = -1; dy < 2; dy++) {
+                    if (dx == 0 && dy == 0) {
+                        continue;
+                    }
+                    if (x+dx < width && x+dx >= 0 && y+dy < height && y+dy >= 0) {
                         // cout << "x + dx: ";
                         // cout << x + dx;
                         // cout << endl;
@@ -142,14 +149,7 @@ list<list<int> > FloodFill(int orig_x, int orig_y, cv::Mat image) {
 
 int main( int argc, char** argv )
 {
-    // if( argc != 2)
-    // {
-    //  cout <<" Usage: display_image ImageToLoadAndDisplay" << endl;
-    //  return -1;
-    // }
-
-    Mat image;
-    image = imread("block_test.jpg");   // Read the file
+    Mat image = imread("block_test.jpg");
     int height = image.rows;
     int width = image.cols;
 
@@ -157,46 +157,36 @@ int main( int argc, char** argv )
     int cn = image.channels();
     Scalar_<uint8_t> bgrPixel;
 
-    // for(int i = 0; i < image.rows; i++) {
-    //     for(int j = 0; j < image.cols; j++) {
-    //         bgrPixel.val[0] = pixelPtr[i*image.cols*cn + j*cn + 0]; // B
-    //         bgrPixel.val[1] = pixelPtr[i*image.cols*cn + j*cn + 1]; // G
-    //         bgrPixel.val[2] = pixelPtr[i*image.cols*cn + j*cn + 2]; // R
-
-    //         if (bgrPixel.val[2] > 1.3*bgrPixel.val[1] && bgrPixel.val[2] > 1.3*bgrPixel.val[0]) {
-    //             pixelPtr[i*image.cols*cn + j*cn + 0] = 0;
-    //             pixelPtr[i*image.cols*cn + j*cn + 1] = 0;
-    //             pixelPtr[i*image.cols*cn + j*cn + 2] = 0;  
-    //         }
-    //     }
-    // }
-
-    // cout << image << endl;
-
     list<list<int> > output;
+    int numBlocks = 0;
     cout << "FloodFill output: " << endl;
-    // std::string color = "Red";
-    for (int x = 0; x < height; x+=50) { // why does switching height and width work?
-        for (int y = 0; y < width; y+=50) {
+    int fillIndex = 0;
+    int fillColor[] = {0, 23, 46, 69, 92, 115, 138, 161, 184, 207, 230};
+
+    for (int x = 0; x < width; x+=100) { // why does switching height and width work?
+        for (int y = 0; y < height; y+=100) {
             output = FloodFill(x, y, image);
             for (list<int> outerList : output) {
                 // cout << "Inside!";
                 for (int pixelVal : outerList) {
                     cout << int(pixelVal) << " ";
+                    int i = outerList.front();
+                    outerList.pop_front();
+                    int j = outerList.front();
+                    // Color the red pixels a different pixel so Flood fill doesn't pick it up again.
+                    pixelPtr[i*image.cols*cn + j*cn + 0] = fillColor[fillIndex];
+                    pixelPtr[i*image.cols*cn + j*cn + 1] = fillColor[fillIndex];
+                    pixelPtr[i*image.cols*cn + j*cn + 2] = fillColor[fillIndex];  
                 }
             } 
-            cout << endl;
-            cout << endl;
+            if (output.size() !=0) {
+                numBlocks++;
+                fillIndex++;
+            }
+            cout << endl << endl;
         }
     }
-
-    // for (std::list< list<int> >::iterator output_it = output.begin(); output_it != output.end(); output_it++) {
-    //     // for (output_it = output.begin(); output_it != output.end(); output_it++) {
-    //     for (std::list< int >::iterator output2_it = output_it.begin(); output2_it != output_it.end(); output2_it++) {
-    //         cout << " " << *output2_it;
-    //     }
-    // }
-    cout << endl;
+    cout << "Number of Flood Fill Areas discovered: " << numBlocks << endl;
 
     namedWindow( "Display window", WINDOW_AUTOSIZE );// Create a window for display.
     imshow( "Display window", image );                   // Show our image inside it.
