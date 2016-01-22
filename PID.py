@@ -21,7 +21,7 @@ class PID(SyncedSketch):
         self.I = 0 # should be negative
         self.D = 0
         self.dT = .03
-        self.motorval = 100
+        self.motorval = 0 #50
         self.last_diff = 0
         self.integral = 0
         self.desired = self.gyro.val + 45 # to drive in a straight line
@@ -57,3 +57,5 @@ if __name__ == "__main__":
     # change the first argument as necessary
     sketch = PID(5, -0.00001, 100)
     sketch.run()
+    sketch.desired = sketch.gyro.val
+    sketch.motorval = 50

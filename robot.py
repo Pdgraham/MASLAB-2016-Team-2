@@ -4,7 +4,7 @@ from tamproxy.devices import DigitalOutput, Motor, Gyro, Encoder
 GOAL_COLOR = "RED"
 
 class MyRobot(SyncedSketch):
-  runtime = 310 #seconds
+  runtime = 30 #seconds
 
   def setup(self):
     # initialize sensors, settings, start timers, etc.
@@ -28,8 +28,17 @@ class MyRobot(SyncedSketch):
     self.encoderLeft.start_continuous()
     self.encoderRight.start_continuous()
 
+    # Initialize PID Values
+    self.P = 10
+    self.I = 0
+    self.D = 0
+    self.last_diff = 0
+    self.integral = 0
+    self.desired = desired_theta
+
     self.timer = Timer()
     self.state = ExploreState()
+    # Starts the robot
     self.run()
 
   def loop(self):
@@ -46,8 +55,30 @@ class MyRobot(SyncedSketch):
     return Inputs(distance_traveled, self.gyro.val)
 
   def processOuputs(Outputs):
+    # TODO Missing servo outputs
+    if (Outputs.driving == True):
+      self.motorval = 50
+    else:
+      self.motorval = 0
+    if (Outputs.turning == True):
+      PID(Outputs.desired_theta)
+    else:
+      PID()
+
+  def PID(desired_theta=self.gyro.val):
+
+    # Set encoder to 0 after turning.
+    # To turn in place, set bias (i.e. motorval to 0)
+    estimated = gyroVal # TODO: calculate estimated with encoder
+    diff = self.desired_theta - estimated
+    self.integral += diff * self.dT
+    derivative = (diff - self.last_diff)/self.dT
+    power = self.P*diff + self.I*self.integral + self.D*derivative # NOTE: Cap self.D*derivative, use as timeout
     self.motorLeft.write(self.motorval>0, min(255, abs(self.motorval + power)))
     self.motorRight.write(self.motorval>0, min(255, abs(self.motorval - power)))
+    # print "EncoderLeft: " + str(self.encoderLeft.val)
+    # print "EncoderRight: " + str(self.encoderRight.val)
+
 
 ######################## States ###########################
 
@@ -57,6 +88,8 @@ class ExploreState:
     # No Cubes
     pass
 
+  
+
 class DriveToBlockState:
   def process(Inputs):
     # Move to cube
@@ -65,23 +98,6 @@ class DriveToBlockState:
     pass
 
 ####################### Processes #########################
-
-def PID(Inputs):
-  self.last_diff = 0
-  self.integral = 0
-  self.desired = self.gyro.val + 45 # to drive in a straight line
-
-  # Set encoder to 0 after turning.
-  # To turn in place, set bias (i.e. motorval to 0)
-  estimated = gyroVal # TODO: calculate estimated with encoder
-  diff = self.desired-estimated
-  self.integral += diff*self.dT
-  derivative = (diff - self.last_diff)/self.dT
-  power = self.P*diff + self.I*self.integral + self.D*derivative # NOTE: Cap self.D*derivative, use as timeout
-  self.motorLeft.write(self.motorval>0, min(255, abs(self.motorval + power)))
-  self.motorRight.write(self.motorval>0, min(255, abs(self.motorval - power)))
-  # print "EncoderLeft: " + str(self.encoderLeft.val)
-  # print "EncoderRight: " + str(self.encoderRight.val)
 
 ################## Seperate Classes #######################
 
