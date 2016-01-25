@@ -3,8 +3,10 @@ from tamproxy.devices import DigitalOutput, Motor, Gyro, Encoder
 
 class PID(SyncedSketch):
     def setup(self):
-        self.motorLeft = Motor(self.tamp, 21, 20)
-        self.motorRight = Motor(self.tamp, 23, 22)
+        #self.motorLeft = Motor(self.tamp, 21, 20)
+        #self.motorRight = Motor(self.tamp, 23, 22)
+        self.motorLeft = Motor(self.tamp, 20, 21)
+        self.motorRight = Motor(self.tamp, 22, 23)
         self.motorLeft.write(1,0)
         self.motorRight.write(1,0)
 
@@ -21,10 +23,10 @@ class PID(SyncedSketch):
         self.I = 0 # should be negative
         self.D = 0
         self.dT = .03
-        self.motorval = 0 #50
+        self.motorval = 25 #50
         self.last_diff = 0
         self.integral = 0
-        self.desired = self.gyro.val + 45 # to drive in a straight line
+        self.desired = self.gyro.val #+ 45 # to drive in a straight line
         self.encoderLeft.start_continuous()
         self.encoderRight.start_continuous()
 
@@ -41,8 +43,9 @@ class PID(SyncedSketch):
             self.integral += diff*self.dT
             derivative = (diff - self.last_diff)/self.dT
             power = self.P*diff + self.I*self.integral + self.D*derivative # NOTE: Cap self.D*derivative, use as timeout
-            self.motorLeft.write(self.motorval>0, min(255, abs(self.motorval + power)))
-            self.motorRight.write(self.motorval>0, min(255, abs(self.motorval - power)))
+            power = min(40, power)
+            self.motorLeft.write((self.motorval + power) > 0, min(255, abs(self.motorval + power)))
+            self.motorRight.write((self.motorval - power) > 0, min(255, abs(self.motorval - power)))
             print "EncoderLeft: " + str(self.encoderLeft.val)
             print "EncoderRight: " + str(self.encoderRight.val)
 
@@ -57,5 +60,3 @@ if __name__ == "__main__":
     # change the first argument as necessary
     sketch = PID(5, -0.00001, 100)
     sketch.run()
-    sketch.desired = sketch.gyro.val
-    sketch.motorval = 50
