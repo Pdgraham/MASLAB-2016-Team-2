@@ -72,11 +72,14 @@ class MyRobot(SyncedSketch):
   def processOutputs(self, Outputs):
     # TODO Missing servo outputs
     if (Outputs.driving == True):
-      self.motorval = 25
+      self.motorval = 0
     else:
       self.motorval = 0
     if (Outputs.turning == True):
-      self.PID(Outputs.desired_theta)
+      if (Outputs.turn_clockwise == True):
+        self.PID(self.gyro.val + 5)
+      else:
+        self.PID(self.gyro.val - 5)
     else:
       self.PID(self.gyro.val)
 
@@ -86,11 +89,12 @@ class MyRobot(SyncedSketch):
     # To turn in place, set bias (i.e. motorval to 0)
     estimated = self.gyro.val # TODO: calculate estimated with encoder
     diff = desired_theta - estimated
+    # print diff
     self.integral += diff * self.dT
     derivative = (diff - self.last_diff)/self.dT
     power = self.P*diff + self.I*self.integral + self.D*derivative # NOTE: Cap self.D*derivative, use as timeout
-    self.motorLeft.write(self.motorval>0, min(255, abs(self.motorval + power)))
-    self.motorRight.write(self.motorval>0, min(255, abs(self.motorval - power)))
+    self.motorLeft.write((self.motorval + power)>0, min(255, abs(self.motorval + power)))
+    self.motorRight.write((self.motorval - power)>0, min(255, abs(self.motorval - power)))
     # print "EncoderLeft: " + str(self.encoderLeft.val)
     # print "EncoderRight: " + str(self.encoderRight.val)
 
@@ -105,10 +109,23 @@ class ExploreState:
 
   def process(self, Inputs):
     WALL_IN_FRONT = 20000
+    if (Inputs.rightIR >= WALL_IN_FRONT):
+      right_wall_following = True
+    else:
+      right_wall_following = False
+    if (Inputs.leftIR >= WALL_IN_FRONT):
+      left_wall_following = True
+    else:
+      left_wall_following = False
+
     if (self.found_block == False):
-      if Inputs.frontRightIR >= WALL_IN_FRONT and Inputs.frontLeftIR == WALL_IN_FRONT:
+      if (Inputs.frontRightIR >= WALL_IN_FRONT and Inputs.frontLeftIR >= WALL_IN_FRONT):
+        facing_wall = True
         return TurnFromWall(self)
-      return WallFollowing(self)
+      elif (Inputs.leftIR >= WALL_IN_FRONT or Inputs.rightIR >= WALL_IN_FRONT):
+        return WallFollowing(self)
+      else:
+        return DrivingStraight(self)
     else:
       return FoundBlock()
 
@@ -174,7 +191,7 @@ class Inputs:
     self.distance_traveled = distance_traveled
     self.theta = theta
     #self.blocks = blocks
-    self.frontRightIR = frontLeftIR
+    self.frontLeftIR = frontLeftIR
     self.frontRightIR = frontRightIR
     self.leftIR = leftIR
     self.rightIR = rightIR
