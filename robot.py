@@ -123,8 +123,10 @@ class ExploreState:
         facing_wall = True
         return TurnFromWall(self)
       elif (Inputs.leftIR >= WALL_IN_FRONT or Inputs.rightIR >= WALL_IN_FRONT):
+        facing_wall = False
         return WallFollowing(self)
       else:
+        facing_wall = False
         return DrivingStraight(self)
     else:
       return FoundBlock()
