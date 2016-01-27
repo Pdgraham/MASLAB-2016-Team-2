@@ -1,24 +1,42 @@
 from tamproxy import Sketch, SyncedSketch, Timer
-from tamproxy.devices import DigitalOutput, Motor, Gyro, Encoder, AnalogInput
+from tamproxy.devices import DigitalOutput, Motor, Gyro, Encoder, AnalogInput, Servo
 import time
+import threading
+import sys
 
 GOAL_COLOR = "RED"
 
 class MyRobot(SyncedSketch):
   runtime = 180 #seconds
+  DOOR_OPEN_POS = 40
+  DOOR_CLOSE_POS = 144
+  GRIPPER_OPEN_POS = 0
+  GRIPPER_CLOSE_POS = 180
+  GRIPPER_DOWN = 1
+  GRIPPER_UP = 0
 
   def setup(self):
     # initialize sensors, settings, start timers, etc.
-    self.motorLeft = Motor(self.tamp, 21, 20)
-    self.motorRight = Motor(self.tamp, 23, 19)
-    self.motorGripper = Motor(self.tamp, 7, 22)
+    self.motorLeft = Motor(self.tamp, 18, 21)#20)
+    self.motorRight = Motor(self.tamp, 19, 23)
+    self.motorGripper = Motor(self.tamp, 7, 22)#22)
     self.motorval = 0
     self.motorLeft.write(1,0)
     self.motorRight.write(1,0)
     self.motorGripper.write(1,0)
-    self.currentGripperLevel = "2"
-    self.moveGripper("2")
+    self.currentGripperLevel = 1
+    self.moveGripper(2)
     print "Motors connected."
+
+    self.servoDoor = Servo(self.tamp, 20)
+    self.servovalDoor = self.DOOR_CLOSE_POS
+    self.servoDoor.write(self.DOOR_CLOSE_POS)
+    self.timerDoor = Timer()
+    self.servoGripper = Servo(self.tamp, 10)
+    self.servovalGripper = self.GRIPPER_OPEN_POS
+    self.servoGripper.write(self.GRIPPER_OPEN_POS)
+    self.timerGripper = Timer()
+    print "Servos connected."
 
     left_pins = 6,5
     right_pins = 3,4
@@ -28,7 +46,7 @@ class MyRobot(SyncedSketch):
     print "Encoders connected." 
    # TODO: set encoder to 0
     self.timer = Timer()
-    self.gyro = Gyro(self.tamp, 10)
+    self.gyro = Gyro(self.tamp, 9)
     print "Gyro connected."
     self.theta = self.gyro.val    
     self.dT = .03
@@ -38,7 +56,7 @@ class MyRobot(SyncedSketch):
 
     frontLeftIR_pin = 14
     self.frontLeftIR = AnalogInput(self.tamp, frontLeftIR_pin)
-    frontRightIR_pin = 13
+    frontRightIR_pin = 15
     self.frontRightIR = AnalogInput(self.tamp, frontRightIR_pin)
     leftIR_pin = 16
     self.leftIR = AnalogInput(self.tamp, leftIR_pin)
@@ -60,11 +78,15 @@ class MyRobot(SyncedSketch):
     print "Robot setup complete."
     #self.run()
 
+    # self.closeOrOpenGripper("Close")
+    self.moveGripper(2)
+
   def loop(self):
     if self.timer.millis() > self.dT*1000:
       inputs = self.readSensors()
       process = self.state.process(inputs)
       # print "Process: " + process.__class__.__name__
+      # print(self.gyro.val)
       self.state = process.get_next_state()
       self.processOutputs(process.get_outputs())
 
@@ -72,17 +94,18 @@ class MyRobot(SyncedSketch):
     # Calculate the distance traveled, change in theta, and then reset sensors
     distance_traveled = (self.encoderLeft.val + self.encoderRight.val) / 2.0
     #encoder_omega = self.encoderLeft.val - self.encoderRight.val
-    # print "frontRightIR: " + self.frontRightIR.val
-    # print "frontLeftIR: " + self.frontLeftIR.val
-    # print "leftIR: " + self.leftIR.val
-    # print "rightIR: " + self.rightIR.val
+    print('frontRightIR: ', self.frontRightIR.val)
+    print("frontLeftIR: ", self.frontLeftIR.val)
+    print("leftIR: ", self.leftIR.val)
+    print("rightIR: ", self.rightIR.val)
+    # blocks = CalculateBlocks(); #what should CalculateBlocks return?
     return Inputs(distance_traveled, self.gyro.val, self.frontRightIR.val, self.frontLeftIR.val, self.leftIR.val, self.rightIR.val)
     # distance_traveled, theta, frontRightIR, frontLeftIR, leftIR, rightIR
 
   def processOutputs(self, Outputs):
     # TODO Missing servo outputs
     if (Outputs.driving == True):
-      self.motorval = 0
+      self.motorval = 0 #25?
     else:
       self.motorval = 0
     if (Outputs.turning == True):
@@ -100,23 +123,46 @@ class MyRobot(SyncedSketch):
     # Set encoder to 0 after turning.
     # To turn in place, set bias (i.e. motorval to 0)
     estimated = self.gyro.val # TODO: calculate estimated with encoder
+    # print(self.gyro.val)
     diff = desired_theta - estimated
     # print diff
     self.integral += diff * self.dT
     derivative = (diff - self.last_diff)/self.dT
     power = self.P*diff + self.I*self.integral + self.D*derivative # NOTE: Cap self.D*derivative, use as timeout
+    # print("motorLeft: ", min(255, abs(self.motorval + power)))
+    # print("motorRight: ", min(255, abs(self.motorval - power)))
     self.motorLeft.write((self.motorval + power)>0, min(255, abs(self.motorval + power)))
     self.motorRight.write((self.motorval - power)>0, min(255, abs(self.motorval - power)))
     # print "EncoderLeft: " + str(self.encoderLeft.val)
     # print "EncoderRight: " + str(self.encoderRight.val)
 
   def moveGripper(self, gripperLevel):
-    # self.currentGripperLevel = Outputs.gripperLevel
-    # do more
-    print("Moving gripper")
-    self.motorGripper.write(1, 10)
-    time.sleep(1)
-    self.motorGripper.write(1,0)
+    # print("Moving gripper")
+    # if gripperLevel < self.currentGripperLevel:
+      # self.motorGripper.write(self.GRIPPER_DOWN, 50)
+    # else:
+      self.motorGripper.write(self.GRIPPER_UP, 50)
+    # t = threading.Timer(2.0, self.motorGripper.write, [1,0]) # seconds
+    # t.start()
+    # self.currentGripperLevel = gripperLevel
+
+  def openDoor(self):
+    while(self.servovalDoor > self.DOOR_OPEN_POS):
+      if (self.timerDoor.millis() > 10):
+        self.timerDoor.reset()
+        self.servovalDoor -= 1
+        print self.servovalDoor
+        self.servoDoor.write(abs(self.servovalDoor))
+
+  def closeOrOpenGripper(self, closeOrOpenMode):
+    # if closeOrOpenMode == "Close":
+    # if closeOrOpenMode == "Open":
+    while(self.servovalGripper < self.GRIPPER_CLOSE_POS):
+      if (self.timerGripper.millis() > 10):
+        self.timerGripper.reset()
+        self.servovalGripper -= 1
+        print self.servovalGripper
+        self.servoGripper.write(abs(self.servovalGripper))
 
 ######################## States ###########################
 
@@ -142,10 +188,8 @@ class ExploreState:
         facing_wall = True
         return TurnFromWall(self)
       elif (Inputs.leftIR >= WALL_IN_FRONT or Inputs.rightIR >= WALL_IN_FRONT):
-        facing_wall = False
         return WallFollowing(self)
       else:
-        facing_wall = False
         return DrivingStraight(self)
     else:
       return FoundBlock()
@@ -167,7 +211,7 @@ class FoundBlock():
     driving = False
     turning = False
     turn_clockwise = False
-    gripperLevel = "2"
+    gripperLevel = 2
     return Outputs(driving, turning, turn_clockwise, gripperLevel)
 
 class WallFollowing():
@@ -179,7 +223,7 @@ class WallFollowing():
     driving = True
     turning = False
     turn_clockwise = False
-    gripperLevel = "2"
+    gripperLevel = 2
     return Outputs(driving, turning, turn_clockwise, gripperLevel)
 
 class TurnFromWall():
@@ -194,7 +238,7 @@ class TurnFromWall():
       turn_clockwise = True
     else:
       turn_clockwise = False
-    gripperLevel = "2"
+    gripperLevel = 2
     return Outputs(driving, turning, turn_clockwise, gripperLevel)
 
 class DrivingStraight():
@@ -206,7 +250,7 @@ class DrivingStraight():
     driving = True
     turning = False
     turn_clockwise = False
-    gripperLevel = "2"
+    gripperLevel = 2
     return Outputs(driving, turning, turn_clockwise, gripperLevel)
 
 ################## Seperate Classes #######################
@@ -244,4 +288,5 @@ class Block:
 
 if __name__ == "__main__":
   robot = MyRobot(5, -0.00001, 100)
+  sys.setrecursionlimit(10000)
   robot.run()
