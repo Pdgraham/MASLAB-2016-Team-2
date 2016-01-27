@@ -1,5 +1,6 @@
 from tamproxy import Sketch, SyncedSketch, Timer
 from tamproxy.devices import DigitalOutput, Motor, Gyro, Encoder, AnalogInput
+import time
 
 GOAL_COLOR = "RED"
 
@@ -9,10 +10,14 @@ class MyRobot(SyncedSketch):
   def setup(self):
     # initialize sensors, settings, start timers, etc.
     self.motorLeft = Motor(self.tamp, 21, 20)
-    self.motorRight = Motor(self.tamp, 23, 22)
+    self.motorRight = Motor(self.tamp, 23, 19)
+    self.motorGripper = Motor(self.tamp, 7, 22)
     self.motorval = 0
     self.motorLeft.write(1,0)
     self.motorRight.write(1,0)
+    self.motorGripper.write(1,0)
+    self.currentGripperLevel = "2"
+    self.moveGripper("2")
     print "Motors connected."
 
     left_pins = 6,5
@@ -59,6 +64,7 @@ class MyRobot(SyncedSketch):
     if self.timer.millis() > self.dT*1000:
       inputs = self.readSensors()
       process = self.state.process(inputs)
+      # print "Process: " + process.__class__.__name__
       self.state = process.get_next_state()
       self.processOutputs(process.get_outputs())
 
@@ -66,6 +72,10 @@ class MyRobot(SyncedSketch):
     # Calculate the distance traveled, change in theta, and then reset sensors
     distance_traveled = (self.encoderLeft.val + self.encoderRight.val) / 2.0
     #encoder_omega = self.encoderLeft.val - self.encoderRight.val
+    # print "frontRightIR: " + self.frontRightIR.val
+    # print "frontLeftIR: " + self.frontLeftIR.val
+    # print "leftIR: " + self.leftIR.val
+    # print "rightIR: " + self.rightIR.val
     return Inputs(distance_traveled, self.gyro.val, self.frontRightIR.val, self.frontLeftIR.val, self.leftIR.val, self.rightIR.val)
     # distance_traveled, theta, frontRightIR, frontLeftIR, leftIR, rightIR
 
@@ -82,6 +92,8 @@ class MyRobot(SyncedSketch):
         self.PID(self.gyro.val - 5)
     else:
       self.PID(self.gyro.val)
+    if Outputs.gripperLevel != self.currentGripperLevel:
+      self.moveGripper(Outputs.gripperLevel)
 
   def PID(self, desired_theta):
     
@@ -98,6 +110,13 @@ class MyRobot(SyncedSketch):
     # print "EncoderLeft: " + str(self.encoderLeft.val)
     # print "EncoderRight: " + str(self.encoderRight.val)
 
+  def moveGripper(self, gripperLevel):
+    # self.currentGripperLevel = Outputs.gripperLevel
+    # do more
+    print("Moving gripper")
+    self.motorGripper.write(1, 10)
+    time.sleep(1)
+    self.motorGripper.write(1,0)
 
 ######################## States ###########################
 
@@ -145,7 +164,9 @@ class FoundBlock():
   def get_outputs(self):
     driving = False
     turning = False
-    return Outputs(driving, turning)
+    turn_clockwise = False
+    gripperLevel = "2"
+    return Outputs(driving, turning, turn_clockwise, gripperLevel)
 
 class WallFollowing():
   def __init__(self, ExploreState):
@@ -156,7 +177,8 @@ class WallFollowing():
     driving = True
     turning = False
     turn_clockwise = False
-    return Outputs(driving, turning, turn_clockwise)
+    gripperLevel = "2"
+    return Outputs(driving, turning, turn_clockwise, gripperLevel)
 
 class TurnFromWall():
   def __init__(self, explore):
@@ -170,7 +192,8 @@ class TurnFromWall():
       turn_clockwise = True
     else:
       turn_clockwise = False
-    return Outputs(driving, turning, turn_clockwise)
+    gripperLevel = "2"
+    return Outputs(driving, turning, turn_clockwise, gripperLevel)
 
 class DrivingStraight():
   def __init__(self, explore):
@@ -181,7 +204,8 @@ class DrivingStraight():
     driving = True
     turning = False
     turn_clockwise = False
-    return Outputs(driving, turning, turn_clockwise)
+    gripperLevel = "2"
+    return Outputs(driving, turning, turn_clockwise, gripperLevel)
 
 ################## Seperate Classes #######################
 
@@ -202,10 +226,11 @@ class Inputs:
     return self.theta
 
 class Outputs:
-  def __init__(self, driving, turning, turn_clockwise):
+  def __init__(self, driving, turning, turn_clockwise, gripperLevel):
     self.driving = driving
     self.turning = turning
     self.turn_clockwise = turn_clockwise
+    self.gripperLevel = gripperLevel
 
 # These can be written as updateable positions on the map
 # For now they must be generated from every image

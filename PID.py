@@ -36,7 +36,7 @@ class PID(SyncedSketch):
         if self.timer.millis() > self.dT*1000:
             self.timer.reset()
             gyroVal = self.gyro.val
-            print gyroVal, self.gyro.status
+            print gyroVal, self.gyro.stxatus
             # TODO: encoderVal
             estimated = gyroVal # TODO: calculate estimated with encoder
             diff = self.desired-estimated
