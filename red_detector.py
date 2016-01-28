@@ -1,5 +1,6 @@
 # import the necessary packages
 from __future__ import print_function
+import numpy
 import cv2
 import time
 from block import Block 
@@ -13,7 +14,7 @@ def FloodFill(x,y,image,block):
 	# print("y: ", y)
 	# bgrPixel = image[y,x] # B
 	# print(bgrPixel)
-	red = image.item(y,x,2)
+	red = image.item(y,x,2) 
 	green = image.item(y,x,1)
 	blue = image.item(y,x,0)
 	pixelIsRed = red > 1.3*green and red > 1.3*blue
@@ -85,13 +86,13 @@ def CalculateBlocks():
 			if block.getNumPixelsInBlock() > 500:
 				blocks.append(block)
 
-	print("Blocks: ", len(blocks))
+	# print("Blocks: ", len(blocks))
 
-	cv2.imshow("Output", orig_image)
-	cv2.imshow("image", image)
-	cv2.waitKey(0)
+	# cv2.imshow("Output", orig_image)
+	# cv2.imshow("image", image)
+	# cv2.waitKey(0)
 	end = time.time()
-	print("Time: ", (end - start))
+	# print("Time: ", (end - start))
 	return blocks
 
 def main():
