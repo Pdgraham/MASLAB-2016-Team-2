@@ -108,7 +108,7 @@ class MyRobot(SyncedSketch):
     if self.timer.millis() > self.dT*1000:
       # print("GameTimer:", self.gameTimer.millis())
       if (self.gameTimer.millis() > self.runtime - 5000): # 5 seconds left in the game
-        self.openDoor()
+        self.openDoorAndBuildTower()
       inputs = self.readSensors()
       process = self.state.process(inputs)
       print "Process: " + process.__class__.__name__
@@ -267,7 +267,9 @@ class MyRobot(SyncedSketch):
           self.servoGripper.write(abs(self.servovalGripper))
     time.sleep(.1)
 
-  def openDoor(self):
+  def openDoorAndBuildTower(self):
+    self.moveGripper() # should be blocking
+    self.closeOrOpenGripper()
     while(self.servovalDoor > self.DOOR_OPEN_POS):
       if (self.timerDoor.millis() > 10):
         self.timerDoor.reset()
