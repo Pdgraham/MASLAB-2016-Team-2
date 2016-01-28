@@ -56,9 +56,10 @@ def FloodFill(x,y,image,block):
 
 	return
 
-def CalculateBlocks():
+def CalculateBlocks(video_image):
 	start = time.time()
-	orig_image = cv2.imread("block_test.jpg")
+        orig_image = video_image
+	# orig_image = cv2.imread("block_test.jpg")
 	# orig_image = cv2.imread("Picture 11.jpg") # Picture 6-11
 	# cv2.imshow("Original", orig_image)
 	image = cv2.resize(orig_image, (0,0), fx=0.25, fy=0.25) # half x and y axes
@@ -84,20 +85,36 @@ def CalculateBlocks():
 
 			# print("numPixels: ", block.getNumPixelsInBlock())
 			if block.getNumPixelsInBlock() > 500:
+                                block.meanX = block.accumulatedX / block.getNumPixelsInBlock()
 				blocks.append(block)
+                                # x, y = block.getBlockBottomPixel()
+				# print(x,y)
+                                # print (block.meanX == x)
+                                # image.itemset((y, x, 0),0)
+                                # image.itemset((y, x, 1),255)
+                                # image.itemset((y, x, 2),0)
 
 	# print("Blocks: ", len(blocks))
 
-	# cv2.imshow("Output", orig_image)
-	# cv2.imshow("image", image)
-	# cv2.waitKey(0)
+	cv2.imshow("Output", orig_image)
+	cv2.imshow("image", image)
+        cv2.waitKey(0)
 	end = time.time()
 	# print("Time: ", (end - start))
 	return blocks
 
 def main():
 	sys.setrecursionlimit(10000) # 10000 is an example, try with different values; default is 1000
-	CalculateBlocks()
+        cam = cv2.VideoCapture(0)
+        ret, frame = cam.read()
+#        img = cv2.resize(frame,None,fx=0.25, fy=0.25, interpolation = cv2.INTER_AREA)
+        cv2.imshow("image", frame)
+        cv2.waitKey(0)
+        print("VideoFrame captured: ", ret)
+	blocks = CalculateBlocks(img)
+        for block in blocks:
+        	x, y =  block.getBlockBottomPixel()
+		print((x,y))
 
 if __name__ == "__main__":
     main()

@@ -7,8 +7,13 @@ class Block:
 		self.bottomRightCornerX = 0
 		self.accumulatedX = 0
 		self.accumulatedY = 0
+                self.meanX = 0
+                self.minY = 0
 		self.color = ""
 		self.addPixelToBlock(x,y)
+
+        def getBlockBottomPixel(self):
+                return self.meanX, self.minY
 
 	def getBlockAttributes(self):
 		return self.color, self.numPixelsInBlock, self.topLeftCornerY, self.topLeftCornerX, self.bottomRightCornerY, self.accumulatedX, self.accumulatedY
@@ -31,4 +36,6 @@ class Block:
 		if x + y > self.bottomRightCornerX + self.bottomRightCornerY:
 			self.bottomRightCornerX = x
 			self.bottomRightCornerY = y
+                if y > self.minY:
+                        self.minY = y
 		self.numPixelsInBlock += 1
