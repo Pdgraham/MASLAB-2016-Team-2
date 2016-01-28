@@ -13,7 +13,7 @@ def FloodFill(x,y,image,block):
 	# print("y: ", y)
 	# bgrPixel = image[y,x] # B
 	# print(bgrPixel)
-	red = image.item(y,x,2) 
+	red = image.item(y,x,2)
 	green = image.item(y,x,1)
 	blue = image.item(y,x,0)
 	pixelIsRed = red > 1.3*green and red > 1.3*blue
@@ -57,8 +57,8 @@ def FloodFill(x,y,image,block):
 
 def CalculateBlocks():
 	start = time.time()
-	# orig_image = cv2.imread("block_test.jpg")
-	orig_image = cv2.imread("Picture 11.jpg") # Picture 6-11
+	orig_image = cv2.imread("block_test.jpg")
+	# orig_image = cv2.imread("Picture 11.jpg") # Picture 6-11
 	# cv2.imshow("Original", orig_image)
 	image = cv2.resize(orig_image, (0,0), fx=0.25, fy=0.25) # half x and y axes
 	height, width, channels = image.shape

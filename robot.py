@@ -1,5 +1,5 @@
-from tamproxy import Sketch, SyncedSketch, Timer
-from tamproxy.devices import DigitalOutput, Motor, Gyro, Encoder, AnalogInput, Servo
+from ..TAMProxy_pyHost.dfg import Sketch, SyncedSketch, Timer
+from ..TAMProxy_pyHost.tamproxy.devices import DigitalOutput, Motor, Gyro, Encoder, AnalogInput, Servo
 import time
 import threading
 import sys
@@ -78,7 +78,6 @@ class MyRobot(SyncedSketch):
     print "Robot setup complete."
     #self.run()
 
-    # self.closeOrOpenGripper("Close")
     self.moveGripper(2)
 
   def loop(self):
