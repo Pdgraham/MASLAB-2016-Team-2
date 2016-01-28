@@ -23,13 +23,15 @@ class MyRobot(SyncedSketch):
     # initialize sensors, settings, start timers, etc.
     self.gameTimer = Timer()
 
-    self.motorLeft = Motor(self.tamp, 18, 21)#20)
-    self.motorRight = Motor(self.tamp, 19, 23)
-    self.motorGripper = Motor(self.tamp, 7, 22)#22)
+    # Pins (7,22); (3,23); (0,21) work.
+    # Problem was with the Double Motor controller.
+    self.motorGripper = Motor(self.tamp, 23, 3)
+    self.motorLeft = Motor(self.tamp, 7, 22)
+    self.motorRight = Motor(self.tamp, 0, 21) # good
     self.motorval = 0
     self.motorLeft.write(1,0)
     self.motorRight.write(1,0)
-    self.motorGripper.write(1,0)
+    self.motorGripper.write(0,100)
     self.currentGripperLevel = 2
     print "Motors connected."
 
@@ -80,7 +82,7 @@ class MyRobot(SyncedSketch):
     # Initialize PID Values
     self.P = 10
     self.I = 5
-    self.D = 0
+    self.D = 5
     self.last_diff = 0
     self.integral = 0
     self.desiredAngle = self.theta
@@ -97,20 +99,27 @@ class MyRobot(SyncedSketch):
     self.frontRightIRVals = deque([])
     self.frontLeftIRVals = deque([])
 
+    self.goIntoTimeoutState = False
+
     # Starts the robot
     print "Robot setup complete."
 
   def loop(self):
     if self.timer.millis() > self.dT*1000:
-      # print("self.gameTimer", self.gameTimer)
-      # print(self.gameTimer.millis())
+      # print("GameTimer:", self.gameTimer.millis())
       if (self.gameTimer.millis() > self.runtime - 5000): # 5 seconds left in the game
         self.openDoor()
       inputs = self.readSensors()
       process = self.state.process(inputs)
       print "Process: " + process.__class__.__name__
-      # print(self.gyro.val)
-      self.state = process.get_next_state()
+      if self.goIntoTimeoutState:
+        self.state = TimeoutState()
+      elif self.timeoutCounter == 3000:
+        self.state = ExploreState()
+        self.timeoutCounter = 0
+        self.goIntoTimeoutState = False
+      else:
+        self.state = process.get_next_state()
       self.processOutputs(process.get_outputs())
       self.timer.reset()
 
@@ -118,32 +127,32 @@ class MyRobot(SyncedSketch):
     # Calculate the distance traveled, change in theta, and then reset sensors
     distance_traveled = (self.encoderLeft.val + self.encoderRight.val) / 2.0
     #encoder_omega = self.encoderLeft.val - self.encoderRight.val
-    # print('frontRightIR: ', self.frontRightIR.val)
-    # print("frontLeftIR: ", self.frontLeftIR.val)
-    # print("leftIR: ", self.leftIR.val)
-    # print("rightIR: ", self.rightIR.val)
+    print('frontRightIR: ', self.frontRightIR.val)
+    print("frontLeftIR: ", self.frontLeftIR.val)
+    print("leftIR: ", self.leftIR.val)
+    print("rightIR: ", self.rightIR.val)
     blocks = CalculateBlocks(); #what should CalculateBlocks return?
     leftIR = self.leftIR.val
     rightIR = self.rightIR.val
     frontLeftIR = self.frontLeftIR.val
     frontRightIR = self.frontRightIR.val
-    if len(self.leftIRVals) == 100:
-      print("Reading from averaged values")
-      self.leftIRVals.append(leftIR)
-      self.leftIRVals.popleft()
-      leftIR = sum(leftIRVals)/100
-    if len(self.rightIRVals) == 100:
-      self.rightIRVals.append(rightIR)
-      self.rightIRVals.popleft()
-      rightIR = sum(self.rightIRVals)/100
-    if len(self.frontLeftIRVals) == 100:
-      self.frontLeftIRVals.append(frontLeftIR)
-      self.frontLeftIRVals.popleft()
-      frontLeftIR = sum(self.frontLeftIRVals)/100
-    if len(self.frontRightIRVals) == 100:
-      self.frontRightIRVals.append(frontRightIR)
-      self.frontRightIRVals.popleft()
-      frontRightIR = sum(self.frontRightIRVals)/100
+    # if len(self.leftIRVals) == 100:
+    #   print("Reading from averaged values")
+    #   self.leftIRVals.append(leftIR)
+    #   self.leftIRVals.popleft()
+    #   leftIR = sum(leftIRVals)/100
+    # if len(self.rightIRVals) == 100:
+    #   self.rightIRVals.append(rightIR)
+    #   self.rightIRVals.popleft()
+    #   rightIR = sum(self.rightIRVals)/100
+    # if len(self.frontLeftIRVals) == 100:
+    #   self.frontLeftIRVals.append(frontLeftIR)
+    #   self.frontLeftIRVals.popleft()
+    #   frontLeftIR = sum(self.frontLeftIRVals)/100
+    # if len(self.frontRightIRVals) == 100:
+    #   self.frontRightIRVals.append(frontRightIR)
+    #   self.frontRightIRVals.popleft()
+    #   frontRightIR = sum(self.frontRightIRVals)/100
 
     ret, frame = self.cam.read()
     img = cv2.resize(frame,None,fx=0.25, fy=0.25, interpolation = cv2.INTER_AREA)
@@ -164,9 +173,9 @@ class MyRobot(SyncedSketch):
       # if we turn, then update self.desiredAngle
       self.desiredAngle = self.gyro.val
       if (Outputs.turn_clockwise == True):
-        self.PID(self.desiredAngle + 5)
+        self.PID(self.desiredAngle + 3) # originally = 5
       else:
-        self.PID(self.desiredAngle - 5)
+        self.PID(self.desiredAngle - 3 ) # originally = 5
     else:
       # self.PID(self.gyro.val)
       self.PID(self.desiredAngle)
@@ -212,6 +221,9 @@ class MyRobot(SyncedSketch):
     # print diff
     self.integral += diff * self.dT
     derivative = (diff - self.last_diff)/self.dT
+    print(derivative) # check this for timeout?
+    # if derivative > x:
+    #   self.goIntoTimeoutMode = True
     power = self.P*diff + self.I*self.integral + self.D*derivative # NOTE: Cap self.D*derivative, use as timeout
     # print("motorLeft: ", min(255, abs(self.motorval + power)))
     # print("motorRight: ", min(255, abs(self.motorval - power)))
@@ -271,7 +283,7 @@ class ExploreState:
   facing_wall = False
 
   def process(self, Inputs):
-    WALL_IN_FRONT = 15000 # orig: 20000
+    WALL_IN_FRONT = 14000 # orig: 20000
     if (Inputs.rightIR >= WALL_IN_FRONT):
       right_wall_following = True # True
     else:
@@ -318,12 +330,15 @@ class CollectBlockState:
       return CollectingBlock(self)
 
 class DiscardBlockState:
-
-
   def process(self, Inputs):
     if Inputs.finishedDiscardingBlock:
       print("Inside DiscardBlockState")
 
+# 
+class TimeoutState:
+  def process(self, Inputs):
+    self.timeoutCounter += 1
+    return DriveBackwards(self)
 
 ####################### Processes #########################
 # --------------- ExploreState Processes -----------------#
@@ -337,7 +352,7 @@ class FoundBlock():
     turn_clockwise = False
     isCollectingBlock = False
     isDiscardingBlock = False
-    return Outputs(driving, turning, turn_clockwise, isCollectingBlock, isDiscardingBlock)
+    return Outputs(driving, driving_backwards, turning, turn_clockwise, isCollectingBlock, isDiscardingBlock)
 
 class WallFollowing():
   def __init__(self, ExploreState): 
@@ -350,7 +365,7 @@ class WallFollowing():
     turn_clockwise = False
     isCollectingBlock = False
     isDiscardingBlock = False
-    return Outputs(driving, turning, turn_clockwise, isCollectingBlock, isDiscardingBlock)
+    return Outputs(driving, driving_backwards, turning, turn_clockwise, isCollectingBlock, isDiscardingBlock)
 
 class TurnFromWall():
   def __init__(self, explore):
@@ -366,7 +381,7 @@ class TurnFromWall():
       turn_clockwise = False # orig: False
     isCollectingBlock = False
     isDiscardingBlock = False
-    return Outputs(driving, turning, turn_clockwise, isCollectingBlock, isDiscardingBlock)
+    return Outputs(driving, driving_backwards, turning, turn_clockwise, isCollectingBlock, isDiscardingBlock)
 
 class DrivingStraight():
   def __init__(self, explore):
@@ -379,7 +394,7 @@ class DrivingStraight():
     turn_clockwise = False
     isCollectingBlock = False
     isDiscardingBlock = False
-    return Outputs(driving, turning, turn_clockwise, isCollectingBlock, isDiscardingBlock)
+    return Outputs(driving, driving_backwards, turning, turn_clockwise, isCollectingBlock, isDiscardingBlock)
 
 # --------------- DriveToBlockState Processes -----------------#
 class BlockInPosition():
@@ -392,7 +407,7 @@ class BlockInPosition():
     turn_clockwise = False
     isCollectingBlock = False
     isDiscardingBlock = False
-    return Outputs(driving, turning, turn_clockwise, isCollectingBlock, isDiscardingBlock)
+    return Outputs(driving, driving_backwards, turning, turn_clockwise, isCollectingBlock, isDiscardingBlock)
 
 # --------------- CollectBlockState Processes -----------------#
 class CollectingBlock(): 
@@ -406,7 +421,7 @@ class CollectingBlock():
     turn_clockwise = False
     isCollectingBlock = True
     isDiscardingBlock = False
-    return Outputs(driving, turning, turn_clockwise, isCollectingBlock, isDiscardingBlock)
+    return Outputs(driving, driving_backwards, turning, turn_clockwise, isCollectingBlock, isDiscardingBlock)
 
 class CollectedCorrectColorBlock():
   # Change to state->Explore without moving
@@ -418,7 +433,7 @@ class CollectedCorrectColorBlock():
     turn_clockwise = False
     isCollectingBlock = False
     isDiscardingBlock = False
-    return Outputs(driving, turning, turn_clockwise, isCollectingBlock, isDiscardingBlock)
+    return Outputs(driving, driving_backwards, turning, turn_clockwise, isCollectingBlock, isDiscardingBlock)
 
 class CollectedWrongColorBlock():
   def get_next_state(self):
@@ -429,10 +444,21 @@ class CollectedWrongColorBlock():
     turn_clockwise = False
     isCollectingBlock = False
     isDiscardingBlock = False
-    return Outputs(driving, turning, turn_clockwise, isCollectingBlock, isDiscardingBlock)
+    return Outputs(driving, driving_backwards, turning, turn_clockwise, isCollectingBlock, isDiscardingBlock)
 
 # --------------- DiscardBlockState Processes -----------------#
-# class Discard_DriveBackwards():
+# Also TimeoutState
+class DriveBackwards():
+  def get_next_state(self):
+    # maybe?
+    return self.state
+  def get_outputs(self):
+    driving = True
+    driving_backwards = True
+    turn_clockwise = False
+    isCollectingBlock = False
+    isDiscardingBlock = False
+    return Outputs(driving, driving_backwards, turning, turn_clockwise, isCollectingBlock, isDiscardingBlock)
 
 # class Discard_Rotate90CounterClockwise():
 
@@ -465,12 +491,13 @@ class Inputs:
     return self.theta
 
 class Outputs:
-  def __init__(self, driving, turning, turn_clockwise, isCollectingBlock, isDiscardingBlock):
+  def __init__(self, driving, driving_backwards, turning, turn_clockwise, isCollectingBlock, isDiscardingBlock):
     self.driving = driving
     self.turning = turning
     self.turn_clockwise = turn_clockwise
     self.isCollectingBlock = isCollectingBlock
     self.isDiscardingBlock = isDiscardingBlock
+    self.driving_backwards = driving_backwards
 
 # These can be written as updateable positions on the map
 # For now they must be generated from every image
