@@ -107,7 +107,7 @@ def main():
         cv2.imshow("image", frame)
         cv2.waitKey(0)
         print("VideoFrame captured: ", ret)
-	blocks = CalculateBlocks(img)
+	blocks = CalculateBlocks(ret)
         for block in blocks:
         	x, y =  block.getBlockBottomPixel()
 		print((x,y))
