@@ -49,7 +49,7 @@ class MyRobot(SyncedSketch):
     self.theta = self.gyro.val    
     self.dT = .01
 
-    # self.cam = cv2.VideoCapture(0)
+    self.cam = cv2.VideoCapture(0)
 
     print "Camera connected."
 
@@ -114,9 +114,9 @@ class MyRobot(SyncedSketch):
     # print("rightIR: ", self.rightIR.val)
 
     # Camera
-    # ret, frame = self.cam.read()
-    # img = cv2.resize(frame,None,fx=0.25, fy=0.25, interpolation = cv2.INTER_AREA)
-    blocks = [] #CalculateBlocks(img); #what should CalculateBlocks return?
+    ret, frame = self.cam.read()
+    img = cv2.resize(frame,None,fx=0.25, fy=0.25, interpolation = cv2.INTER_AREA)
+    blocks = CalculateBlocks(img); #what should CalculateBlocks return?
 
     leftIR = self.leftIR.val
     rightIR = self.rightIR.val
@@ -184,8 +184,8 @@ class MyRobot(SyncedSketch):
     self.integral += diff * self.dT
     derivative = (diff - self.last_diff)/self.dT
     power = self.P*diff + self.I*self.integral + self.D*derivative # NOTE: Cap self.D*derivative, use as timeout
-    print("motorLeft: ", min(75, abs(self.motorval + power)))
-    print("motorRight: ", min(75, abs(self.motorval - power)))
+    # print("motorLeft: ", min(75, abs(self.motorval + power)))
+    # print("motorRight: ", min(75, abs(self.motorval - power)))
     self.motorLeft.write((self.motorval + power)>0, min(75, abs(self.motorval + power)))
     self.motorRight.write((self.motorval - power)>0, min(75, abs(self.motorval - power)))
     # print "EncoderLeft: " + str(self.encoderLeft.val)
@@ -244,8 +244,12 @@ class ExploreState:
   facing_wall = False
 
   def process(self, Inputs):
-    WALL_IN_FRONT = 20000 # orig: 20000
+    WALL_IN_FRONT = 15000 # orig: 20000
     print len(Inputs.blocks)
+    if len(Inputs.blocks) >= 1:
+      self.found_block = True
+    else:
+      self.found_block = False
     if (Inputs.rightIR >= WALL_IN_FRONT):
       right_wall_following = True # True
     else:
@@ -280,6 +284,7 @@ class DriveToBlockState:
     # In Position to knock down tower/Pick up block
     if (len(Inputs.blocks) > 0):
       for block in Inputs.blocks:
+	print("block.minY:", block.minY)
         if (block.minY >= 80): 
           return ClosingInOnBlock(self) # collectBlockState
 
@@ -288,7 +293,7 @@ class DriveToBlockState:
       closest_block = None
       closest_block_our_color = None
       for block in Inputs.blocks:
-        if block.minY > closest_block.minY:
+        if closest_block ==  None or block.minY > closest_block.minY:
           closest_block = block
           if block.color == GOAL_COLOR and block.minY > closest_block_our_color.minY:
             closest_block_our_color = block
