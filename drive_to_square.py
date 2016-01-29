@@ -23,9 +23,9 @@ class MyRobot(SyncedSketch):
     # initialize sensors, settings, start timers, etc.
     self.gameTimer = Timer()
 
-    self.motorLeft = Motor(self.tamp, 0, 21)#20)
-    self.motorRight = Motor(self.tamp, 7, 22)
-    self.motorGripper = Motor(self.tamp, 23, 3)#22)
+    self.motorGripper = Motor(self.tamp, 23, 3)
+    self.motorLeft = Motor(self.tamp, 7, 22)
+    self.motorRight = Motor(self.tamp, 0, 21)
     self.motorval = 0
     self.motorLeft.write(1,0)
     self.motorRight.write(1,0)
@@ -43,20 +43,13 @@ class MyRobot(SyncedSketch):
     self.timerGripper = Timer()
     print "Servos connected."
 
-    left_pins = 6,5
-    right_pins = 3,4
-    # Encoder doesn't work when after gyro
-    self.encoderLeft = Encoder(self.tamp, 6,5, continuous=False)
-    self.encoderRight = Encoder(self.tamp, 3,4, continuous=True)
-    print "Encoders connected." 
-   # TODO: set encoder to 0
     self.timer = Timer()
     self.gyro = Gyro(self.tamp, 9)
     print "Gyro connected."
     self.theta = self.gyro.val    
     self.dT = .01
 
-    self.cam = cv2.VideoCapture(0)
+    # self.cam = cv2.VideoCapture(0)
 
     print "Camera connected."
 
@@ -76,7 +69,7 @@ class MyRobot(SyncedSketch):
 
     # Initialize PID Values
     self.P = 10
-    self.I = 5
+    self.I = 0 #5
     self.D = 0
     self.last_diff = 0
     self.integral = 0
@@ -102,9 +95,8 @@ class MyRobot(SyncedSketch):
       # print("self.gameTimer", self.gameTimer)
       # print(self.gameTimer.millis())
       if (self.gameTimer.millis() > self.runtime - 5000): # 5 seconds left in the game
-        self.openDoor()
+        self.openDoorAndBuildTower()
       inputs = self.readSensors()
-      print("Completed reading sensors")
       process = self.state.process(inputs)
       print "Process: " + process.__class__.__name__
       # print(self.gyro.val)
@@ -114,7 +106,7 @@ class MyRobot(SyncedSketch):
 
   def readSensors(self):
     # Calculate the distance traveled, change in theta, and then reset sensors
-    distance_traveled = (self.encoderLeft.val + self.encoderRight.val) / 2.0
+    distance_traveled = 0 #(self.encoderLeft.val + self.encoderRight.val) / 2.0
     #encoder_omega = self.encoderLeft.val - self.encoderRight.val
     # print('frontRightIR: ', self.frontRightIR.val)
     # print("frontLeftIR: ", self.frontLeftIR.val)
@@ -122,32 +114,14 @@ class MyRobot(SyncedSketch):
     # print("rightIR: ", self.rightIR.val)
 
     # Camera
-    ret, frame = self.cam.read()
-    img = cv2.resize(frame,None,fx=0.25, fy=0.25, interpolation = cv2.INTER_AREA)
-    print("VideoFrame captured: ", ret)
-    blocks = CalculateBlocks(img); #what should CalculateBlocks return?
+    # ret, frame = self.cam.read()
+    # img = cv2.resize(frame,None,fx=0.25, fy=0.25, interpolation = cv2.INTER_AREA)
+    blocks = [] #CalculateBlocks(img); #what should CalculateBlocks return?
 
     leftIR = self.leftIR.val
     rightIR = self.rightIR.val
     frontLeftIR = self.frontLeftIR.val
     frontRightIR = self.frontRightIR.val
-    if len(self.leftIRVals) == 100:
-      print("Reading from averaged values")
-      self.leftIRVals.append(leftIR)
-      self.leftIRVals.popleft()
-      leftIR = sum(leftIRVals)/100
-    if len(self.rightIRVals) == 100:
-      self.rightIRVals.append(rightIR)
-      self.rightIRVals.popleft()
-      rightIR = sum(self.rightIRVals)/100
-    if len(self.frontLeftIRVals) == 100:
-      self.frontLeftIRVals.append(frontLeftIR)
-      self.frontLeftIRVals.popleft()
-      frontLeftIR = sum(self.frontLeftIRVals)/100
-    if len(self.frontRightIRVals) == 100:
-      self.frontRightIRVals.append(frontRightIR)
-      self.frontRightIRVals.popleft()
-      frontRightIR = sum(self.frontRightIRVals)/100
 
     return Inputs(distance_traveled, self.gyro.val, frontRightIR, frontLeftIR, leftIR, rightIR, self.finishedCollectingBlock, blocks, self.color.r, self.color.g, self.color.b)     
 
@@ -161,9 +135,9 @@ class MyRobot(SyncedSketch):
       # if we turn, then update self.desiredAngle
       self.desiredAngle = self.gyro.val
       if (Outputs.turn_clockwise == True):
-        self.PID(self.desiredAngle + 5)
+        self.PID(self.desiredAngle + 3)
       else:
-        self.PID(self.desiredAngle - 5)
+        self.PID(self.desiredAngle - 3)
     else:
       # self.PID(self.gyro.val)
       self.PID(self.desiredAngle)
@@ -210,10 +184,10 @@ class MyRobot(SyncedSketch):
     self.integral += diff * self.dT
     derivative = (diff - self.last_diff)/self.dT
     power = self.P*diff + self.I*self.integral + self.D*derivative # NOTE: Cap self.D*derivative, use as timeout
-    # print("motorLeft: ", min(255, abs(self.motorval + power)))
-    # print("motorRight: ", min(255, abs(self.motorval - power)))
-    self.motorLeft.write((self.motorval + power)>0, min(255, abs(self.motorval + power)))
-    self.motorRight.write((self.motorval - power)>0, min(255, abs(self.motorval - power)))
+    print("motorLeft: ", min(75, abs(self.motorval + power)))
+    print("motorRight: ", min(75, abs(self.motorval - power)))
+    self.motorLeft.write((self.motorval + power)>0, min(75, abs(self.motorval + power)))
+    self.motorRight.write((self.motorval - power)>0, min(75, abs(self.motorval - power)))
     # print "EncoderLeft: " + str(self.encoderLeft.val)
     # print "EncoderRight: " + str(self.encoderRight.val)
 
@@ -252,7 +226,9 @@ class MyRobot(SyncedSketch):
           self.servoGripper.write(abs(self.servovalGripper))
     time.sleep(.1)
 
-  def openDoor(self):
+  def openDoorAndBuildTower(self):
+    self.moveGripper() # should be blocking
+    self.closeOrOpenGripper()
     while(self.servovalDoor > self.DOOR_OPEN_POS):
       if (self.timerDoor.millis() > 10):
         self.timerDoor.reset()
@@ -268,7 +244,7 @@ class ExploreState:
   facing_wall = False
 
   def process(self, Inputs):
-    WALL_IN_FRONT = 15000 # orig: 20000
+    WALL_IN_FRONT = 20000 # orig: 20000
     print len(Inputs.blocks)
     if (Inputs.rightIR >= WALL_IN_FRONT):
       right_wall_following = True # True

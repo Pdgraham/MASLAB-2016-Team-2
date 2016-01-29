@@ -31,7 +31,7 @@ class MyRobot(SyncedSketch):
     self.motorval = 0
     self.motorLeft.write(1,0)
     self.motorRight.write(1,0)
-    self.motorGripper.write(0,100)
+    self.motorGripper.write(1,0)
     self.currentGripperLevel = 2
     print "Motors connected."
 
@@ -132,7 +132,7 @@ class MyRobot(SyncedSketch):
     print("frontLeftIR: ", self.frontLeftIR.val)
     print("leftIR: ", self.leftIR.val)
     print("rightIR: ", self.rightIR.val)
-    blocks = CalculateBlocks(); #what should CalculateBlocks return?
+    blocks = [] #CalculateBlocks(); #what should CalculateBlocks return?
     leftIR = self.leftIR.val
     rightIR = self.rightIR.val
     frontLeftIR = self.frontLeftIR.val
