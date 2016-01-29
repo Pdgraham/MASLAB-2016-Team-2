@@ -64,9 +64,6 @@ class MyRobot(SyncedSketch):
     #                integrationTime=Color.INTEGRATION_TIME_101MS,
     #                gain=Color.GAIN_1X)
 
-    self.encoderLeft.start_continuous()
-    self.encoderRight.start_continuous()
-
     frontLeftIR_pin = 14
     self.frontLeftIR = AnalogInput(self.tamp, frontLeftIR_pin)
     frontRightIR_pin = 15
@@ -274,6 +271,7 @@ class ExploreState:
 
   def process(self, Inputs):
     WALL_IN_FRONT = 15000 # orig: 20000
+    print len(Inputs.blocks)
     if (Inputs.rightIR >= WALL_IN_FRONT):
       right_wall_following = True # True
     else:
@@ -542,7 +540,7 @@ class Inputs:
   # def __init__(self, distance_traveled, theta, frontRightIR, frontLeftIR, leftIR, rightIR, colorR, colorG, colorB):
     self.distance_traveled = distance_traveled
     self.theta = theta
-    #self.blocks = blocks
+    self.blocks = blocks
     self.frontLeftIR = frontLeftIR
     self.frontRightIR = frontRightIR
     self.leftIR = leftIR
@@ -575,6 +573,6 @@ class Block:
     self.goal_color = (color == GOAL_COLOR)
 
 if __name__ == "__main__":
-  robot = MyRobot(5, -0.00001, 100)
+  robot = MyRobot(12, -0.00001, 100)
   sys.setrecursionlimit(10000)
   robot.run()
