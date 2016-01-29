@@ -151,7 +151,7 @@ class MyRobot(SyncedSketch):
       self.frontRightIRVals.popleft()
       frontRightIR = sum(self.frontRightIRVals)/100
 
-    return Inputs(distance_traveled, self.gyro.val, frontRightIR, frontLeftIR, leftIR, rightIR, self.finishedCollectingBlock, img)
+    return Inputs(distance_traveled, self.gyro.val, frontRightIR, frontLeftIR, leftIR, rightIR, self.finishedCollectingBlock, blocks)
       # self.leftIR.val, self.rightIR.val, self.color.r, self.color.g, self.color.b)
      
     # distance_traveled, theta, frontRightIR, frontLeftIR, leftIR, rightIR
@@ -302,20 +302,44 @@ class ExploreState:
 
 class DriveToBlockState:
   def process(self, Inputs):
-    # Move to cube
+    IN_FRONT_OF_BLOCK = 80 
     
-    # In Position
-      return BlockInPosition(self)
+    # In Position to knock down tower/Pick up block
+    if (len(Inputs.blocks) > 0):
+      for block in Inputs.blocks:
+        if (block.minY >= 40): 
+          return ClosingInOnBlock(self)
+
+    # Move to cube if the closest block is our Goal Color
+    if (len(Inputs.blocks) > 0):
+      closest_block = None
+      closest_block_our_color = None
+      for block in Inputs.blocks:
+        if block.minY > closest_block.minY:
+          closest_block = block
+          if block.color == GOAL_COLOR and block.minY > closest_block_our_color.minY:
+            closest_block_our_color = block
+      if closest_block.color == GOAL_COLOR:
+        if (closest_block.meanX >= IN_FRONT_OF_BLOCK-20 and
+            closest_block.meanX <= IN_FRONT_OF_BLOCK+20):
+          return DrivingToGoalBlock()
+        elif (closest_block.meanX > IN_FRONT_OF_BLOCK+20):
+          return TurnToGoalBlockClockwise()
+        elif (closest_block.meanX < IN_FRONT_OF_BLOCK-20):
+          return TurnToGoalBlockCounterClockwise()
+    # return BlockInPosition(self)
     # Lost Cube
     # pass
 
 class CollectBlockState:
   def process(self, Inputs):
+    #if (TODO color sensor is not ready):
+    return MovingUpToBlock()
     if Inputs.finishedCollectingBlock:
       Inputs.finishedCollectingBlock = False
       # If block collected is the correct color
       return CollectedCorrectColorBlock()
-      # else
+      # else:
       # return CollectedWrongColorBlock()
     else:
       return CollectingBlock(self)
@@ -385,19 +409,78 @@ class DrivingStraight():
     return Outputs(driving, turning, turn_clockwise, isCollectingBlock, isDiscardingBlock)
 
 # --------------- DriveToBlockState Processes -----------------#
-class BlockInPosition():
-  # Change to state->CollectBlock without moving
+class DrivingToGoalBlock():
   def get_next_state(self):
-    return CollectBlockState()
+    return DriveToBlockState()
   def get_outputs(self):
-    driving = False
+    driving = True
     turning = False
     turn_clockwise = False
     isCollectingBlock = False
     isDiscardingBlock = False
     return Outputs(driving, turning, turn_clockwise, isCollectingBlock, isDiscardingBlock)
 
+class TurnToGoalBlockClockwise():
+  def get_next_state(self):
+    return DriveToBlockState()
+  def get_outputs(self):
+    driving = False
+    turning = True
+    turn_clockwise = True
+    isCollectingBlock = False
+    isDiscardingBlock = False
+    return Outputs(driving, turning, turn_clockwise, isCollectingBlock, isDiscardingBlock)
+
+class TurnToGoalBlockCounterClockwise():
+  def get_next_state(self):
+    return DriveToBlockState()
+  def get_outputs(self):
+    driving = False
+    turning = True
+    turn_clockwise = False
+    isCollectingBlock = False
+    isDiscardingBlock = False
+    return Outputs(driving, turning, turn_clockwise, isCollectingBlock, isDiscardingBlock)
+
+class ClosingInOnBlock():
+  def get_next_state(self):
+    return CollectBlockState()
+  def get_outputs(self):
+    driving = True
+    turning = False
+    turn_clockwise = False
+    isCollectingBlock = False
+    isDiscardingBlock = False
+    return Outputs(driving, turning, turn_clockwise, isCollectingBlock, isDiscardingBlock)
+
+# class DrivingToNonGoalBlock():  #Might not matter because we should just drive to almost all blocks
+
+#class BlockInPosition():
+#  # Change to state->CollectBlock without moving
+#  def get_next_state(self):
+#    return CollectBlockState()
+#  def get_outputs(self):
+#    driving = False
+#    turning = False
+#    turn_clockwise = False
+#    isCollectingBlock = False
+#    isDiscardingBlock = False
+#    return Outputs(driving, turning, turn_clockwise, isCollectingBlock, isDiscardingBlock)
+
 # --------------- CollectBlockState Processes -----------------#
+class MovingUpToBlock():
+  def __init__(self, driveToBlockState):
+    self.state = driveToBlockState
+  def get_next_state(self):
+    return self.state
+  def get_outputs(self):
+    driving = True
+    turning = False
+    turn_clockwise = False
+    isCollectingBlock = True
+    isDiscardingBlock = False
+    return Outputs(driving, turning, turn_clockwise, isCollectingBlock, isDiscardingBlock)
+
 class CollectingBlock(): 
   def __init__(self,driveToBlockState):
     self.state = driveToBlockState
@@ -447,7 +530,7 @@ class CollectedWrongColorBlock():
 
 # Represents the inputs returned from the sensors (gyro, encoders, and webcam)
 class Inputs:
-  def __init__(self, distance_traveled, theta, frontRightIR, frontLeftIR, leftIR, rightIR, finishedCollectingBlock, img):
+  def __init__(self, distance_traveled, theta, frontRightIR, frontLeftIR, leftIR, rightIR, finishedCollectingBlock, blocks):
   # def __init__(self, distance_traveled, theta, frontRightIR, frontLeftIR, leftIR, rightIR, colorR, colorG, colorB):
     self.distance_traveled = distance_traveled
     self.theta = theta
@@ -457,7 +540,7 @@ class Inputs:
     self.leftIR = leftIR
     self.rightIR = rightIR
     self.finishedCollectingBlock = finishedCollectingBlock
-    self.img = img
+    # self.img = img
     # self.colorR = colorR
     # self.colorG = colorG
     # self.colorB = colorB
