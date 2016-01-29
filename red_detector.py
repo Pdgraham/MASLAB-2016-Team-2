@@ -95,10 +95,6 @@ def CalculateBlocks(video_image):
                                 # image.itemset((y, x, 2),0)
 
 	# print("Blocks: ", len(blocks))
-
-	cv2.imshow("Output", orig_image)
-	cv2.imshow("image", image)
-        cv2.waitKey(0)
 	end = time.time()
 	# print("Time: ", (end - start))
 	return blocks
