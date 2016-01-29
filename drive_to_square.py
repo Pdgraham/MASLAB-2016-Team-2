@@ -23,9 +23,9 @@ class MyRobot(SyncedSketch):
     # initialize sensors, settings, start timers, etc.
     self.gameTimer = Timer()
 
-    self.motorLeft = Motor(self.tamp, 18, 21)#20)
-    self.motorRight = Motor(self.tamp, 19, 23)
-    self.motorGripper = Motor(self.tamp, 7, 22)#22)
+    self.motorLeft = Motor(self.tamp, 0, 21)#20)
+    self.motorRight = Motor(self.tamp, 7, 22)
+    self.motorGripper = Motor(self.tamp, 23, 3)#22)
     self.motorval = 0
     self.motorLeft.write(1,0)
     self.motorRight.write(1,0)
@@ -60,9 +60,9 @@ class MyRobot(SyncedSketch):
 
     print "Camera connected."
 
-    # self.color = Color(self.tamp,
-    #                integrationTime=Color.INTEGRATION_TIME_101MS,
-    #                gain=Color.GAIN_1X)
+    self.color = Color(self.tamp,
+                   integrationTime=Color.INTEGRATION_TIME_101MS,
+                   gain=Color.GAIN_1X)
 
     self.encoderLeft.start_continuous()
     self.encoderRight.start_continuous()
@@ -107,6 +107,7 @@ class MyRobot(SyncedSketch):
       if (self.gameTimer.millis() > self.runtime - 5000): # 5 seconds left in the game
         self.openDoor()
       inputs = self.readSensors()
+      print("Completed reading sensors")
       process = self.state.process(inputs)
       print "Process: " + process.__class__.__name__
       # print(self.gyro.val)
@@ -151,10 +152,7 @@ class MyRobot(SyncedSketch):
       self.frontRightIRVals.popleft()
       frontRightIR = sum(self.frontRightIRVals)/100
 
-    return Inputs(distance_traveled, self.gyro.val, frontRightIR, frontLeftIR, leftIR, rightIR, self.finishedCollectingBlock, blocks)
-      # self.leftIR.val, self.rightIR.val, self.color.r, self.color.g, self.color.b)
-     
-    # distance_traveled, theta, frontRightIR, frontLeftIR, leftIR, rightIR
+    return Inputs(distance_traveled, self.gyro.val, frontRightIR, frontLeftIR, leftIR, rightIR, self.finishedCollectingBlock, blocks, self.color.r, self.color.g, self.color.b)     
 
   def processOutputs(self, Outputs):
     # TODO Missing servo outputs
@@ -308,8 +306,8 @@ class DriveToBlockState:
     # In Position to knock down tower/Pick up block
     if (len(Inputs.blocks) > 0):
       for block in Inputs.blocks:
-        if (block.minY >= 40): 
-          return ClosingInOnBlock(self)
+        if (block.minY >= 80): 
+          return ClosingInOnBlock(self) # collectBlockState
 
     # Move to cube if the closest block is our Goal Color
     if (len(Inputs.blocks) > 0):
@@ -334,8 +332,8 @@ class DriveToBlockState:
 
 class CollectBlockState:
   def process(self, Inputs):
-    #if (TODO color sensor is not ready):
-    return MovingUpToBlock()
+    if not(Inputs.colorR > 2*Inputs.colorG and Inputs.colorR > 2*Inputs.colorB and Inputs.R > 120):
+      return MovingUpToBlock()
     if Inputs.finishedCollectingBlock:
       Inputs.finishedCollectingBlock = False
       # If block collected is the correct color
@@ -346,8 +344,6 @@ class CollectBlockState:
       return CollectingBlock(self)
 
 class DiscardBlockState:
-
-
   def process(self, Inputs):
     if Inputs.finishedDiscardingBlock:
       print("Inside DiscardBlockState")
@@ -450,6 +446,7 @@ class TurnToGoalBlockCounterClockwise():
     isDiscardingBlock = False
     return Outputs(driving, turning, turn_clockwise, isCollectingBlock, isDiscardingBlock)
 
+# State transition from DrivingToBlockState -> ColllectBlockState
 class ClosingInOnBlock():
   def get_next_state(self):
     return CollectBlockState()
@@ -538,20 +535,20 @@ class CollectedWrongColorBlock():
 
 # Represents the inputs returned from the sensors (gyro, encoders, and webcam)
 class Inputs:
-  def __init__(self, distance_traveled, theta, frontRightIR, frontLeftIR, leftIR, rightIR, finishedCollectingBlock, blocks):
+  def __init__(self, distance_traveled, theta, frontRightIR, frontLeftIR, leftIR, rightIR, finishedCollectingBlock, blocks, colorR, colorG, colorB):
   # def __init__(self, distance_traveled, theta, frontRightIR, frontLeftIR, leftIR, rightIR, colorR, colorG, colorB):
     self.distance_traveled = distance_traveled
     self.theta = theta
-    #self.blocks = blocks
+    self.blocks = blocks
     self.frontLeftIR = frontLeftIR
     self.frontRightIR = frontRightIR
     self.leftIR = leftIR
     self.rightIR = rightIR
     self.finishedCollectingBlock = finishedCollectingBlock
     # self.img = img
-    # self.colorR = colorR
-    # self.colorG = colorG
-    # self.colorB = colorB
+    self.colorR = colorR
+    self.colorG = colorG
+    self.colorB = colorB
   
   def get_distance_traveled():
     return self.distance_traveled
