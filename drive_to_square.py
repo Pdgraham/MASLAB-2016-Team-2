@@ -303,6 +303,7 @@ class ExploreState:
 class DriveToBlockState:
   def process(self, Inputs):
     IN_FRONT_OF_BLOCK = 80 
+    PIXEL_MARGIN = 20
     
     # In Position to knock down tower/Pick up block
     if (len(Inputs.blocks) > 0):
@@ -320,12 +321,12 @@ class DriveToBlockState:
           if block.color == GOAL_COLOR and block.minY > closest_block_our_color.minY:
             closest_block_our_color = block
       if closest_block.color == GOAL_COLOR:
-        if (closest_block.meanX >= IN_FRONT_OF_BLOCK-20 and
-            closest_block.meanX <= IN_FRONT_OF_BLOCK+20):
+        if (closest_block.meanX >= IN_FRONT_OF_BLOCK-PIXEL_MARGIN and
+            closest_block.meanX <= IN_FRONT_OF_BLOCK+PIXEL_MARGIN):
           return DrivingToGoalBlock()
-        elif (closest_block.meanX > IN_FRONT_OF_BLOCK+20):
+        elif (closest_block.meanX > IN_FRONT_OF_BLOCK+PIXEL_MARGIN):
           return TurnToGoalBlockClockwise()
-        elif (closest_block.meanX < IN_FRONT_OF_BLOCK-20):
+        elif (closest_block.meanX < IN_FRONT_OF_BLOCK-PIXEL_MARGIN):
           return TurnToGoalBlockCounterClockwise()
     # return BlockInPosition(self)
     # Lost Cube
@@ -351,6 +352,13 @@ class DiscardBlockState:
     if Inputs.finishedDiscardingBlock:
       print("Inside DiscardBlockState")
 
+
+class SetTowerState:
+  def process(self, Inputs):
+    # Turn to face wall then back away
+    # Turn 180, drive forward, back away, turn 180 again
+    
+    pass
 
 ####################### Processes #########################
 # --------------- ExploreState Processes -----------------#
