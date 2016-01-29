@@ -87,9 +87,12 @@ class MyRobot(SyncedSketch):
   def processOutputs(self, Outputs):
     # TODO Missing servo outputs
     if (Outputs.driving == True):
-      self.motorval = 25 #25?
+      self.motorval = 50 #25?
     else:
       self.motorval = 0
+    if (Outputs.isDiscardingBlock == True):
+      self.motorval = -50
+
     if (Outputs.turning == True):
       # if we turn, then update self.desiredAngle
       self.desiredAngle = self.gyro.val
@@ -124,8 +127,11 @@ class ExploreState:
   right_wall_following = False
   facing_wall = False
   distance_from_wall = 0
+  counter = 0
+
   def process(self, Inputs):
     WALL_IN_FRONT = 20000 # orig: 20000
+
     if (Inputs.rightIR > Inputs.leftIR):
       right_wall_following = True
       left_wall_following = False
@@ -134,9 +140,13 @@ class ExploreState:
       left_wall_following = True
       right_wall_following = False
       distance_from_wall = Inputs.leftIR
-
-    print(Inputs.frontRightIR, Inputs.frontLeftIR)
-    print(Inputs.rightIR, Inputs.leftIR)
+    self.counter += 1
+    if (self.counter > 550):
+      self.counter = 0
+    elif (self.counter >= 500 ):
+      return BackUpAndTurn(self)
+    #print(Inputs.frontRightIR, Inputs.frontLeftIR)
+    #print(Inputs.rightIR, Inputs.leftIR)
     #if (self.found_block == False):
     if (Inputs.frontRightIR >= WALL_IN_FRONT or Inputs.frontLeftIR >= WALL_IN_FRONT):
       return TurnFromWall(self)
@@ -159,12 +169,14 @@ class WallFollowing():
     turn_clockwise = False
     # Turn towards wall
     print self.state.distance_from_wall
-#    if self.state.distance_from_wall > 460000 and self.state.distance_from_wall < 33000:
+
+#    if self.state.distance_from_wall < 26000:
 #      turning = True
 #      if (self.state.left_wall_following):
 #        turn_clockwise = True # orig: True
 #      else:
 #        turn_clockwise = False # orig: False
+
     # Turn away from wall
     if self.state.distance_from_wall > 20000:
       driving = False
@@ -206,124 +218,21 @@ class DrivingStraight():
     isDiscardingBlock = False
     return Outputs(driving, turning, turn_clockwise, isCollectingBlock, isDiscardingBlock)
 
-# --------------- DriveToBlockState Processes -----------------#
-class DrivingToGoalBlock():
+class BackUpAndTurn():
+  def __init__(self, explore):
+    self.state = explore
   def get_next_state(self):
-    return DriveToBlockState()
+    return self.state
   def get_outputs(self):
     driving = True
-    turning = False
-    turn_clockwise = False
-    isCollectingBlock = False
-    isDiscardingBlock = False
-    return Outputs(driving, turning, turn_clockwise, isCollectingBlock, isDiscardingBlock)
-
-class TurnToGoalBlockClockwise():
-  def get_next_state(self):
-    return DriveToBlockState()
-  def get_outputs(self):
-    driving = False
     turning = True
-    turn_clockwise = True
+    if (self.state.left_wall_following):
+      turn_clockwise = True # orig: True
+    else:
+      turn_clockwise = False # orig: False
+    isDiscardingBlock = True
     isCollectingBlock = False
-    isDiscardingBlock = False
     return Outputs(driving, turning, turn_clockwise, isCollectingBlock, isDiscardingBlock)
-
-class TurnToGoalBlockCounterClockwise():
-  def get_next_state(self):
-    return DriveToBlockState()
-  def get_outputs(self):
-    driving = False
-    turning = True
-    turn_clockwise = False
-    isCollectingBlock = False
-    isDiscardingBlock = False
-    return Outputs(driving, turning, turn_clockwise, isCollectingBlock, isDiscardingBlock)
-
-# State transition from DrivingToBlockState -> ColllectBlockState
-class ClosingInOnBlock():
-  def get_next_state(self):
-    return CollectBlockState()
-  def get_outputs(self):
-    driving = True
-    turning = False
-    turn_clockwise = False
-    isCollectingBlock = False
-    isDiscardingBlock = False
-    return Outputs(driving, turning, turn_clockwise, isCollectingBlock, isDiscardingBlock)
-
-# class DrivingToNonGoalBlock():  #Might not matter because we should just drive to almost all blocks
-
-#class BlockInPosition():
-#  # Change to state->CollectBlock without moving
-#  def get_next_state(self):
-#    return CollectBlockState()
-#  def get_outputs(self):
-#    driving = False
-#    turning = False
-#    turn_clockwise = False
-#    isCollectingBlock = False
-#    isDiscardingBlock = False
-#    return Outputs(driving, turning, turn_clockwise, isCollectingBlock, isDiscardingBlock)
-
-# --------------- CollectBlockState Processes -----------------#
-class MovingUpToBlock():
-  def __init__(self, driveToBlockState):
-    self.state = driveToBlockState
-  def get_next_state(self):
-    return self.state
-  def get_outputs(self):
-    driving = True
-    turning = False
-    turn_clockwise = False
-    isCollectingBlock = True
-    isDiscardingBlock = False
-    return Outputs(driving, turning, turn_clockwise, isCollectingBlock, isDiscardingBlock)
-
-class CollectingBlock(): 
-  def __init__(self,driveToBlockState):
-    self.state = driveToBlockState
-  def get_next_state(self):
-    return self.state
-  def get_outputs(self):
-    driving = False
-    turning = False
-    turn_clockwise = False
-    isCollectingBlock = True
-    isDiscardingBlock = False
-    return Outputs(driving, turning, turn_clockwise, isCollectingBlock, isDiscardingBlock)
-
-class CollectedCorrectColorBlock():
-  # Change to state->Explore without moving
-  def get_next_state(self):
-    return ExploreState()
-  def get_outputs(self):
-    driving = False
-    turning = False
-    turn_clockwise = False
-    isCollectingBlock = False
-    isDiscardingBlock = False
-    return Outputs(driving, turning, turn_clockwise, isCollectingBlock, isDiscardingBlock)
-
-class CollectedWrongColorBlock():
-  def get_next_state(self):
-    return self.state
-  def get_outputs(self):
-    driving = False
-    turning = False
-    turn_clockwise = False
-    isCollectingBlock = False
-    isDiscardingBlock = False
-    return Outputs(driving, turning, turn_clockwise, isCollectingBlock, isDiscardingBlock)
-
-# --------------- DiscardBlockState Processes -----------------#
-# class Discard_DriveBackwards():
-
-# class Discard_Rotate90CounterClockwise():
-
-# class Discard_DriveFoward():
-
-# class 
 
 ################## Seperate Classes #######################
 
@@ -333,16 +242,12 @@ class Inputs:
   # def __init__(self, distance_traveled, theta, frontRightIR, frontLeftIR, leftIR, rightIR, colorR, colorG, colorB):
     self.distance_traveled = distance_traveled
     self.theta = theta
-#    self.blocks = blocks
     self.frontLeftIR = frontLeftIR
     self.frontRightIR = frontRightIR
     self.leftIR = leftIR
     self.rightIR = rightIR
     self.finishedCollectingBlock = finishedCollectingBlock
     # self.img = img
-#    self.colorR = colorR
-#    self.colorG = colorG
-#    self.colorB = colorB
   
   def get_distance_traveled():
     return self.distance_traveled
