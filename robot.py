@@ -100,6 +100,7 @@ class MyRobot(SyncedSketch):
     self.frontLeftIRVals = deque([])
 
     self.goIntoTimeoutState = False
+    self.timeoutCounter = 0
 
     # Starts the robot
     print "Robot setup complete."
@@ -399,8 +400,10 @@ class DrivingStraight():
     return Outputs(driving, driving_backwards, turning, turn_clockwise, isCollectingBlock, isDiscardingBlock)
 
 # --------------- DriveToBlockState Processes -----------------#
+# TODO: Assign variable to track current color of block
+#       Gets reset to "" in CollectedCorrectColorBlock
+# Change to state->CollectBlock without moving
 class BlockInPosition():
-  # Change to state->CollectBlock without moving
   def get_next_state(self):
     return CollectBlockState()
   def get_outputs(self):
@@ -437,9 +440,10 @@ class CollectedCorrectColorBlock():
     isDiscardingBlock = False
     return Outputs(driving, driving_backwards, turning, turn_clockwise, isCollectingBlock, isDiscardingBlock)
 
+  # Change to state->DiscardBlockState without moving
 class CollectedWrongColorBlock():
   def get_next_state(self):
-    return self.state
+    return DiscardBlockState()
   def get_outputs(self):
     driving = False
     turning = False
